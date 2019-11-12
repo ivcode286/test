@@ -1,0 +1,153 @@
+Private Sub CommandButton1_Click()
+ClearContent
+fileNo = ImportExcelIntoWorkbook
+DeleteSheets
+formatSheet
+SaveWSToDesktop (fileNo)
+'ActiveWorkbook.Close
+End Sub
+
+
+Function ImportExcelIntoWorkbook() As Integer
+
+
+ Dim directory As String, fileName As String, sheet As Worksheet, fileNo As Integer
+ Dim myDirectory As Collection, myFileName As Collection, mySheetName As Collection
+ Set myDirectory = New Collection
+ Set myFileName = New Collection
+ Set mySheetName = New Collection
+
+ 
+    ' Open the file dialog
+    With Application.FileDialog(msoFileDialogOpen)
+        .AllowMultiSelect = True
+        .Show
+    fileNo = .SelectedItems.Count
+
+
+    For i = 1 To fileNo
+    myDirectory.Add .SelectedItems(i)
+    myFileName.Add Right$(.SelectedItems(i), Len(.SelectedItems(i)) - InStrRev(.SelectedItems(i), "\"))
+    Next i
+    End With
+    
+   
+    Application.ScreenUpdating = False   'Turn off screen updating and displaying alerts.
+    Application.DisplayAlerts = False
+    For i = 1 To fileNo
+    Workbooks.Open (myDirectory(i))
+    Workbooks(myFileName(i)).Worksheets(1).Copy After:=Workbooks("Compute").Worksheets(i)
+    mySheetName.Add Workbooks(myFileName(i)).Worksheets(1).Name
+    Workbooks(myFileName(i)).Close
+    Next i
+    Application.ScreenUpdating = True
+    Application.DisplayAlerts = True
+    
+    If fileNo < 1 Then
+    MsgBox "At least select one file!"
+    Exit Function
+    End If
+    
+    
+ 
+    'integate all summary tabs into result tab
+    Dim desSheet As Worksheet
+    Set desSheet = Worksheets("Result")
+    RowCount = 2
+     
+    For i = 1 To fileNo
+    Dim srcSheet As Worksheet
+    Set srcSheet = Worksheets(mySheetName(i))
+    lastrow = srcSheet.Cells(Rows.Count, 1).End(xlUp).Row
+
+           
+                For j = 2 To lastrow   'start from row 2 as row 1 is a tab reference no e.g 2600
+                    If srcSheet.Cells(j, 1) <> "PO Description" And srcSheet.Cells(j, 1) <> "" Then
+                    'desSheet.Cells(RowCount, 1) = srcSheet.Cells(j, 1)
+                    desSheet.Cells(RowCount, 1) = ""
+                    
+                         If srcSheet.Cells(j, 2) <> "PO No." And srcSheet.Cells(j, 2) <> "" Then
+                         desSheet.Cells(RowCount, 2) = srcSheet.Cells(j, 2)
+                         End If
+                         If srcSheet.Cells(j, 3) <> "Contract No." And srcSheet.Cells(j, 3) <> "" Then
+                         desSheet.Cells(RowCount, 3) = srcSheet.Cells(j, 3)
+                         End If
+                         
+                        desSheet.Cells(RowCount, 4) = "001"
+                        
+                        If srcSheet.Cells(j, 1) <> "PO Description" And srcSheet.Cells(j, 1) <> "" Then
+                         desSheet.Cells(RowCount, 6) = srcSheet.Cells(j, 1)
+                         End If
+                          
+                         If srcSheet.Cells(j, 6) <> "Site QTY" And srcSheet.Cells(j, 6) <> "" Then
+                         desSheet.Cells(RowCount, 7) = srcSheet.Cells(j, 6)
+                         End If
+                         If srcSheet.Cells(j, 4) <> "Unit price" And srcSheet.Cells(j, 4) <> "" Then
+                         desSheet.Cells(RowCount, 8) = srcSheet.Cells(j, 4)
+                         End If
+                         If srcSheet.Cells(j, 5) <> "Value can be invoiced" And srcSheet.Cells(j, 5) <> "" Then
+                         desSheet.Cells(RowCount, 9) = srcSheet.Cells(j, 5)
+                         End If
+                         
+                         RowCount = RowCount + 1
+                    End If
+                Next j
+    Next i
+  
+     
+ImportExcelIntoWorkbook = fileNo
+End Function
+
+
+
+
+
+Sub DeleteSheets()
+    Dim xWs As Worksheet
+    Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    For Each xWs In Application.ActiveWorkbook.Worksheets
+        If xWs.Name <> "Compute" And xWs.Name <> "Result" Then
+            xWs.Delete
+        End If
+    Next
+    Application.DisplayAlerts = True
+    Application.ScreenUpdating = True
+End Sub
+
+
+Sub ClearContent()
+Worksheets("Result").Rows("2:" & Rows.Count).ClearContents
+End Sub
+
+Sub SaveWSToDesktop(fileNo As Integer)
+    If fileNo < 1 Then
+    'MsgBox "At least select one file!"
+    Exit Sub
+    End If
+
+ ActiveWorkbook.Worksheets("Result").Copy
+ Set objWS = CreateObject("WScript.Shell")
+ strDesktopPath = objWS.SpecialFolders("Desktop")
+    'there is now a new active workbook
+    With ActiveWorkbook
+        format_date = Format(Now(), "YYYYMMDD_hhmmss")
+        .SaveAs fileName:=strDesktopPath & "\PacReport" & "_" & format_date, FileFormat:=xlOpenXMLWorkbook
+        .Close savechanges:=False
+    End With
+  
+    Workbooks.Open (strDesktopPath & "\PacReport" & "_" & format_date)
+    MsgBox "File saved to desktop!"
+End Sub
+
+Sub formatSheet()
+    With Worksheets("Result")
+        .Cells.Font.Name = "Calibri"
+        .Cells.Font.Size = 10
+        .Cells.VerticalAlignment = xlCenter
+        .Cells.HorizontalAlignment = xlCenter
+    End With
+    'MsgBox ("Font:Calibri, Size:10, Alignment:Center")
+End Sub
+
+
